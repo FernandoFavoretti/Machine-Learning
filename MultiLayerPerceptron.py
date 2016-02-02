@@ -203,9 +203,9 @@ class MLP_Classifier(object):
     def fit(self, patterns):
         if self.verbose == True:
             if self.output_activation == 'softmax':
-                print 'Using softmax activation in output layer'
+                print('Using softmax activation in output layer')
             elif self.output_activation == 'logistic':
-                print 'Using logistic sigmoid activation in output layer'
+                print('Using logistic sigmoid activation in output layer')
 
         num_example = np.shape(patterns)[0]
         for j in range(10):
