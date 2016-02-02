@@ -38,9 +38,9 @@ class MLP_Classifier(object):
     An example is provided below with the digit recognition dataset provided by sklearn
     Fully pypy compatible.
     """
-    def __init__(self, input, hidden, output, iterations = 50, learning_rate = 0.01, 
-                l2_in = 0, l2_out = 0, momentum = 0, rate_decay = 0, 
-                output_layer = 'logistic', verbose = True):
+    def __init__(self, input, hidden, output, iterations=50, learning_rate=0.01, 
+                l2_in=0, l2_out=0, momentum=0, rate_decay=0, 
+                output_layer='logistic', verbose=True, wi_file=None, wo_file=None):
         """
         :param input: number of input neurons
         :param hidden: number of hidden neurons
@@ -52,6 +52,8 @@ class MLP_Classifier(object):
         :param rate_decay: how much to decrease learning rate by on each iteration (epoch)
         :param output_layer: activation (transfer) function of the output layer
         :param verbose: whether to spit out error rates while training
+        :param wi_file: name of npy file to read input weights from
+        :param wo_file: name of npy file to read output weights from
         """
         # initialize parameters
         self.iterations = iterations
@@ -73,7 +75,11 @@ class MLP_Classifier(object):
         self.ah = np.ones(self.hidden)
         self.ao = np.ones(self.output)
 
-        self.randomize()
+        if wi_file is not None and wo_file is not None:
+          self.wi = np.load(wi_file)
+          self.wo = np.load(wo_file)
+        else:
+          self.randomize()
 
         # create arrays of 0 for changes
         # this is essentially an array of temporary values that gets updated at each iteration
@@ -81,12 +87,20 @@ class MLP_Classifier(object):
         self.ci = np.zeros((self.input, self.hidden))
         self.co = np.zeros((self.hidden, self.output))
 
-    def randomize(self):
+    def randomize(self, start=0, step=1):
         # create randomized weights
         # use scheme from Efficient Backprop by LeCun 1998 to initialize weights for hidden layer
+        # variable entropy can be introduced to existing arrays using the
+        # start and step arguments
         input_range = 1.0 / self.input ** (1/2)
-        self.wi = np.random.normal(loc = 0, scale = input_range, size = (self.input, self.hidden))
-        self.wo = np.random.uniform(size = (self.hidden, self.output)) / np.sqrt(self.hidden)
+        wi = np.random.normal(loc=0, scale=input_range, size=(self.input, self.hidden))
+        wo = np.random.uniform(size=(self.hidden, self.output)) / np.sqrt(self.hidden)
+        if step == 1:
+          self.wi = wi
+          self.wo = wo
+        else: # NB arrays must already exist for this to work
+          self.wi[start::step] = wi[start::step]
+          self.wo[start::step] = wo[start::step]
 
     def feedForward(self, inputs):
         """
@@ -179,8 +193,11 @@ class MLP_Classifier(object):
         for p in patterns:
             x = np.where(p[1] > 0.5)
             y = np.where(self.feedForward(p[0]) > 0.5)
-            if len(x) > 0 and len(y) > 0 and x[0] == y[0]:
-              nright += 1
+            try:
+              if len(x) > 0 and len(y) > 0 and x[0] == y[0]:
+                nright += 1
+            except:
+              print('odd array from np.where', x, y)
         print('{:3.1f}% right'.format(100.0 * nright / len(patterns)))
 
     def fit(self, patterns):
@@ -194,7 +211,7 @@ class MLP_Classifier(object):
         for j in range(10):
           last_error = None
           error_trend = 20.0
-          self.randomize()
+          self.randomize(j, 10)
           print("-------------------- randomized -----------------")
           for i in range(self.iterations):
               error = 0.0
@@ -215,13 +232,13 @@ class MLP_Classifier(object):
               #    errorfile.close()
 
               if i % 20 == 0 and self.verbose == True:
-                  print('Training error {:6.3f}, trend {:6.3f}'.format(error / num_example, error_trend * num_example / error))
-                  if (error_trend * num_example / error) < 15.0:
+                  print('Training error {:6.4f}, trend {:6.4f}'.format(error / num_example, error_trend * num_example / error))
+                  if (error_trend * num_example / error) < 20.0:
                     break
 
               # learning rate decay
               self.learning_rate = self.learning_rate * (self.learning_rate / (self.learning_rate + (self.learning_rate * self.rate_decay)))
-              if error < (0.001 * num_example):
+              if error < (0.0005 * num_example):
                 return
 
     def predict(self, X):
@@ -244,29 +261,27 @@ def demo():
         # first ten values are the one hot encoded y (target) values
         y = data[:, :10]
         x = data[:, 10:]
-        xmax = np.amax(x, axis=1)
-        x = (x.T / xmax).T
+        xmax = np.amax(x, axis=1) # scale values between 0.0 and 1.0
+        x = (x.T / xmax).T        # could probably just divide by 16.0 for this data
+        return [[x[i], y[i]] for i in range(data.shape[0])]
 
-        out = []
-
-        for i in range(data.shape[0]):
-            tupledata = list((x[i], y[i])) # don't mind this variable name
-            out.append(tupledata)
-
-        return out
-
+    LEARN = True # control saving to weight files. Must do before setting False
     start = time.time()
-
     X = load_data()
+
+    wif = None if LEARN else 'wi_file.npy'
+    wof = None if LEARN else 'wo_file.npy'
 
     NN = MLP_Classifier(64, 48, 10, iterations = 250, learning_rate = 0.01, 
                         momentum = 0.5, rate_decay = 0.0001, 
-                        output_layer = 'logistic')
-
-    NN.fit(X)
-
-    end = time.time()
-    print('learning took {:4.1f}s'.format(end - start))
+                        output_layer = 'logistic', wi_file=wif, wo_file=wof)
+    if LEARN:
+      NN.fit(X)
+      np.save('wi_file.npy', NN.wi)
+      np.save('wo_file.npy', NN.wo)
+      end = time.time()
+      print('Weights saved. Learning took {:4.1f}s'.format(end - start))
+      print('To re-use these weights change LEARN above to False')
 
     NN.test(X)
 
