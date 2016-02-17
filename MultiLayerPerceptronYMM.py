@@ -211,7 +211,7 @@ class MLP_Classifier(object):
         for j in range(10):
           last_error = None
           error_trend = 500.0
-          self.randomize(j, 10)
+          self.randomize(j, 7)
           print("-------------------- randomized -----------------")
           for i in range(self.iterations):
               error = 0.0
@@ -224,16 +224,16 @@ class MLP_Classifier(object):
 
               if last_error is None:
                 last_error = error
-              error_trend = error_trend * 0.9 + (last_error - error) * 0.1
+              error_trend = error_trend * 0.75 + (last_error - error) * 0.25
               last_error = error
 
               #with open('error.txt', 'a') as errorfile:
               #    errorfile.write(str(error) + '\n')
               #    errorfile.close()
 
-              if i % 5 == 0 and self.verbose == True:
-                  print('Training error {:6.4f}, trend {:6.4f}'.format(error / num_example, error_trend  / error))
-                  if (error_trend  / error) < 2.0 and i > 20:
+              if i % 2 == 0 and self.verbose == True:
+                  print('Training error {:6.6f}, trend {:6.4f}'.format(error / num_example, error_trend  / error))
+                  if (error_trend  / error) < 0.05 and i > 20:
                     break
 
               # learning rate decay
@@ -258,11 +258,9 @@ def demo():
     def load_data():
         data = np.loadtxt('pictures/learndb.csv', delimiter = ',')
 
-        # first ten values are the one hot encoded y (target) values
-        y = data[:, :5]
-        x = data[:, 5:]
-        #xmax = np.amax(x, axis=1) # scale values between 0.0 and 1.0
-        #x = (x.T / xmax).T        # could probably just divide by 16.0 for this data
+        # first five values are the one hot encoded y (target) values
+        y = data[:, :5] # output results picture category
+        x = data[:, 5:] # inputs histogram of gradients
         return [[x[i], y[i]] for i in range(data.shape[0])]
 
     LEARN = True # control saving to weight files. Must do before setting False
@@ -272,7 +270,7 @@ def demo():
     wif = None if LEARN else 'wi_file.npy'
     wof = None if LEARN else 'wo_file.npy'
 
-    NN = MLP_Classifier(2048, 48, 5, iterations = 250, learning_rate = 0.01, 
+    NN = MLP_Classifier(2048, 64, 5, iterations = 250, learning_rate = 0.01, 
                         momentum = 0.5, rate_decay = 0.0001, 
                         output_layer = 'logistic', wi_file=wif, wo_file=wof)
     if LEARN:

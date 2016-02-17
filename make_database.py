@@ -17,9 +17,9 @@ with open('pictures/learndb.csv','w') as db:
   for dname, dnames, fnames in os.walk('./pictures'):
     if dname != './pictures' and len(fnames) > 0 and not '__' in dname:
       for i,f in enumerate(fnames):
-        hogs = ip.get_hogs(np.array(Image.open(os.path.join(dname, f))), 20)
+        hogs = ip.get_hogs(np.array(Image.open(os.path.join(dname, f))), 200)
         for hog in hogs:
           db.write(result_dict[dname])
-          db.write(','.join(['0' if k < 0.00001 and k > -0.00001 else '{:5.5f}'.format(k) for k in hog]))
+          db.write(','.join(['0' if k < 0.001 and k > -0.001 else '{:3.3f}'.format(k) for k in hog]))
           db.write(chr(10))
           print(dname, i)
