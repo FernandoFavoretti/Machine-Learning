@@ -24,8 +24,9 @@ class ImageProcessor(object):
     in the demo they are converted to 0-255 uint8 using a colourmap.
     '''
     if im.shape[:2] != (256, 256): # this is expecting 3D i.e. error for 'L' type image
-      im = scipy.ndimage.interpolation.zoom(im, (256.0 / im.shape[0], 
-                                            256.0 / im.shape[1], 1.0))
+      zoom_tuple = (256.0 / im.shape[0], 256.0 / im.shape[1], 1.0)
+      if len(im.shape) > 2: zoom_tuple = zoom_tuple[:2]
+      im = scipy.ndimage.interpolation.zoom(im, zoom_tuple)
     im = im.astype(np.float)
     if len(im.shape) > 2: # convert to luminance - greyscale
       im = (im[:,:,:3] * [0.2989, 0.5870, 0.1140]).sum(axis=2)
@@ -38,7 +39,7 @@ class ImageProcessor(object):
     gr = np.gradient(im) # a list of two arrays, one for each axis
     # create an array of integers representing the direction of this gradient
     # this scales the angle to the range 0 to 7 as int
-    bn = ((np.arctan2(gr[0], gr[1]) + np.pi) * 1.2732395).astype(np.int)
+    bn = ((np.arctan2(gr[0], gr[1]) + 3.1415926) * 1.2732395).astype(np.int)
     # then accumulate the square of the gradient length in each bin
     hog[self.YNDX[:,:], self.XNDX[:,:], bn[:,:]] += gr[0][:,:] ** 2 + gr[1][:,:] ** 2
     # and finally square root the total
@@ -54,7 +55,7 @@ class ImageProcessor(object):
     
   def get_hogs(self, img, number):
     ''' this method returns a generator for a number of hogs, each will
-    be a variant of the img
+    be a variant of the img, rotated, scaled, shifted and flipped
     '''
     self._process_image(img)
     for j in range(number):
@@ -63,13 +64,13 @@ class ImageProcessor(object):
       # scale
       a = scipy.ndimage.interpolation.zoom(a, (random.uniform(1.0, 1.075), 
                                                random.uniform(1.0, 1.075)))
-      # flip
       a = a[:256,:256]
       # shift
       dx = random.randint(-20,20)
       dy = random.randint(-20,20)
       a = np.roll(a, dx, axis=1)
       a = np.roll(a, dy, axis=0)
+      # flip
       if random.randint(0, 1) == 1:
         a = a[:,::-1]
       yield self._make_hog(a)
