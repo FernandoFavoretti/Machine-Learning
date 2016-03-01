@@ -22,16 +22,16 @@ LEARN = True # control saving to weight files. Must do before setting False
 start = time.time()
 X = load_data()
 
-wif = None if LEARN else 'wi_file.npy'
-wof = None if LEARN else 'wo_file.npy'
+wif = None if LEARN else 'wi_file_sk.npy'
+wof = None if LEARN else 'wo_file_sk.npy'
 
 NN = MultiLayerPerceptron(64, 48, 10, iterations = 250, learning_rate = 0.01, 
-                    momentum = 0.5, rate_decay = 0.9999, 
-                    output_layer = 'logistic', wi_file=wif, wo_file=wof)
+                    rate_decay = 0.9999, 
+                    wi_file=wif, wo_file=wof)
 if LEARN:
-  NN.fit(X)
-  np.save('wi_file.npy', NN.wi)
-  np.save('wo_file.npy', NN.wo)
+  NN.train(X)
+  np.save(wif, NN.wi)
+  np.save(wof, NN.wo)
   end = time.time()
   print('Weights saved. Learning took {:4.1f}s'.format(end - start))
   print('To re-use these weights change LEARN above to False')

@@ -13,7 +13,7 @@ result_dict = {
     './pictures/top_hat':'0,0,0,1,0,',
     './pictures/whippet':'0,0,0,0,1,'}
 ip = ImageProcessor()
-with open('pictures/learndb.csv','w') as db:
+with open('Data/learndb.csv','w') as db:
   for dname, dnames, fnames in os.walk('./pictures'):
     if dname != './pictures' and len(fnames) > 0 and not '__' in dname:
       for i,f in enumerate(fnames):

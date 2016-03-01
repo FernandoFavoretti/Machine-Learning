@@ -83,11 +83,11 @@ hog_sprite.set_alpha(0.85)
 hidden_sprite.set_alpha(0.85)
 
 font = pi3d.Font('fonts/FreeSans.ttf', (150, 150, 150, 255))
-str_list = [pi3d.String(font=font, string='Border Terrier', x=-1.0, y=1.0, z=3.0),
-            pi3d.String(font=font, string='Flat Cap', x=-1.0, y=0.5, z=3.0),
-            pi3d.String(font=font, string='Labrador', x=-1.0, y=0.0, z=3.0),
-            pi3d.String(font=font, string='Top Hat', x=-1.0, y=-0.5, z=3.0),
-            pi3d.String(font=font, string='Whippet', x=-1.0, y=-1.0, z=3.0)]
+str_list = [pi3d.String(font=font, string='0.Border Terrier', x=-1.0, y=1.0, z=3.0),
+            pi3d.String(font=font, string='1.Flat Cap', x=-1.0, y=0.5, z=3.0),
+            pi3d.String(font=font, string='2.Labrador', x=-1.0, y=0.0, z=3.0),
+            pi3d.String(font=font, string='3.Top Hat', x=-1.0, y=-0.5, z=3.0),
+            pi3d.String(font=font, string='4.Whippet', x=-1.0, y=-1.0, z=3.0)]
 for st in str_list:
   st.set_shader(shader)
 
@@ -101,6 +101,7 @@ mouse = pi3d.Mouse(restrict=False)
 mouse.start()
 
 fr = 0
+trained = False
 while DISPLAY.loop_running():
   mx, my = mouse.position()
   mx *= -0.1
@@ -135,9 +136,13 @@ while DISPLAY.loop_running():
   k = mykeys.read()
   if k >-1:
     if k == 27:
-      mykeys.close()
-      DISPLAY.destroy()
       break
+    if k >= ord('0') and k <= ord('4'): # do training
+      trained = True
+      i = k - ord('0')
+      targets = np.zeros((5,), dtype=np.float)
+      targets[i] = 1.0
+      mlp.back_propagate(targets, learning_rate=0.1)
 
   ''' NB uncomment below with care; this will generate a lot of images very 
   quickly! Also you obviously need a viable path rather than the one below 
@@ -145,3 +150,10 @@ while DISPLAY.loop_running():
   '''
   #pi3d.screenshot("/media/pi/701E-64FC/tmp/scrap/fr{:05d}.jpg".format(fr))
   #fr += 1
+
+mykeys.close()
+DISPLAY.destroy()
+if trained:
+  np.save('wi_file.npy', mlp.wi)
+  np.save('wo_file.npy', mlp.wo)
+
