@@ -10,7 +10,7 @@ import time
 import picamera
 import picamera.array
 
-mlp = MultiLayerPerceptron(2048, 64, 5, output_layer = 'logistic', 
+mlp = MultiLayerPerceptron(2048, 64, 5,  
                      wi_file='wi_file.npy', wo_file='wo_file.npy')
 ip = ImageProcessor()
 ready_flag = False
@@ -20,15 +20,6 @@ def get_image():
   global mlp, ip, outlayer, ready_flag
   with picamera.PiCamera() as camera:
     camera.resolution = (256, 256)
-    # try to fix the exposure to stop the image 'changing'
-    camera.frame_rate = 20
-    camera.iso = 400
-    time.sleep(1.0)
-    camera.shutter_speed = camera.exposure_speed
-    camera.exposure_mode = 'off'
-    g = camera.awb_gains
-    camera.awb_mode = 'off'
-    camera.awb_gains = g
     with picamera.array.PiRGBArray(camera) as output:
       while True: # loop for ever
         if not ready_flag:
@@ -62,7 +53,7 @@ hog = np.zeros((16, 128, 3), dtype=np.uint8)
 hidden = np.zeros((8, 8, 3), dtype=np.uint8)
 
 ########################################################################
-DISPLAY = pi3d.Display.create(x=250, y=50, background=(0.1, 0.1, 0.1, 1.0))
+DISPLAY = pi3d.Display.create(x=100, y=100, background=(0.1, 0.1, 0.1, 0.9))
 CAM = pi3d.Camera()
 shader = pi3d.Shader('uv_flat')
 lgtshd = pi3d.Shader('mat_light')
@@ -83,11 +74,11 @@ hog_sprite.set_alpha(0.85)
 hidden_sprite.set_alpha(0.85)
 
 font = pi3d.Font('fonts/FreeSans.ttf', (150, 150, 150, 255))
-str_list = [pi3d.String(font=font, string='0.Border Terrier', x=-1.0, y=1.0, z=3.0),
-            pi3d.String(font=font, string='1.Flat Cap', x=-1.0, y=0.5, z=3.0),
-            pi3d.String(font=font, string='2.Labrador', x=-1.0, y=0.0, z=3.0),
-            pi3d.String(font=font, string='3.Top Hat', x=-1.0, y=-0.5, z=3.0),
-            pi3d.String(font=font, string='4.Whippet', x=-1.0, y=-1.0, z=3.0)]
+str_list = [pi3d.String(font=font, string='1.Border Terrier', x=-1.0, y=1.0, z=3.0),
+            pi3d.String(font=font, string='2.Flat Cap', x=-1.0, y=0.5, z=3.0),
+            pi3d.String(font=font, string='3.Labrador', x=-1.0, y=0.0, z=3.0),
+            pi3d.String(font=font, string='4.Top Hat', x=-1.0, y=-0.5, z=3.0),
+            pi3d.String(font=font, string='5.Whippet', x=-1.0, y=-1.0, z=3.0)]
 for st in str_list:
   st.set_shader(shader)
 
@@ -102,6 +93,7 @@ mouse.start()
 
 fr = 0
 trained = False
+presses = [0] * 5
 while DISPLAY.loop_running():
   mx, my = mouse.position()
   mx *= -0.1
@@ -137,18 +129,19 @@ while DISPLAY.loop_running():
   if k >-1:
     if k == 27:
       break
-    if k >= ord('0') and k <= ord('4'): # do training
+    if k >= ord('1') and k <= ord('5'): # do training
       trained = True
-      i = k - ord('0')
+      i = k - ord('1')
       targets = np.zeros((5,), dtype=np.float)
       targets[i] = 1.0
-      mlp.back_propagate(targets, learning_rate=0.1)
+      presses[i] += 1
+      print('{} {},{},{},{},{}'.format(mlp.back_propagate(targets, learning_rate=0.05), *presses))
 
   ''' NB uncomment below with care; this will generate a lot of images very 
   quickly! Also you obviously need a viable path rather than the one below 
   which will only match the USB drive I happen to be using.
   '''
-  #pi3d.screenshot("/media/pi/701E-64FC/tmp/scrap/fr{:05d}.jpg".format(fr))
+  #pi3d.screenshot("/media/pi/701E-64FC/tmp/scr_cap/fr{:05d}.jpg".format(fr))
   #fr += 1
 
 mykeys.close()
@@ -156,4 +149,11 @@ DISPLAY.destroy()
 if trained:
   np.save('wi_file.npy', mlp.wi)
   np.save('wo_file.npy', mlp.wo)
-
+  try:
+    with open('presses.txt','r') as f:
+      old_presses = f.read().split()
+  except:
+    old_presses = ['0'] * 5
+  with open('presses.txt','w') as f:
+    for i in range(5):
+     f.write('{} '.format(presses[i] + int(old_presses[i])))
